@@ -48,7 +48,8 @@ export class JudgeAgent {
     topic: string,
     rounds: { speaker: string; response: string }[],
   ): Promise<(JudgeRoundScore | null)[]> {
-    if (!this.llmClient) return rounds.map(() => null);
+    const llmClient = this.llmClient;
+    if (!llmClient) return rounds.map(() => null);
 
     return Promise.all(
       rounds.map(async (rd) => {
@@ -72,7 +73,7 @@ export class JudgeAgent {
             'Reply ONLY: {"political": 0-100, "economic": 0-100, "social": 0-100, "rationale": "one sentence"}',
           ].join("\n");
 
-          const raw = await this.llmClient.generate(prompt, system, {
+          const raw = await llmClient.generate(prompt, system, {
             temperature: 0.3,
             max_tokens: 150,
           });

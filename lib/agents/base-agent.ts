@@ -4,7 +4,6 @@
 
 import {
   OCEANTraits,
-  PolicyScores,
   AgentScorecard,
   RegionWeights,
   REGION_WEIGHTS,
@@ -206,6 +205,7 @@ export abstract class HistoricalAgent {
     return this.memoryClient.summarizeRecent(this.name);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   protected generateFallbackResponse(_topic: string): string {
     throw new Error(`No LLM client configured for ${this.name}`);
   }
@@ -398,16 +398,34 @@ export abstract class HistoricalAgent {
     violatedRedLines?: number;
     lowCooperationRounds?: number;
     repeatedPositions?: number;
+    response?: string;
+    scores?: { political: number; economic: number; social: number };
+    rationale?: string;
   }): number {
     const maxRounds = opts.maxRounds ?? 20;
     const opponentObjective = opts.opponentObjective ?? 0;
 
-    const scores = scoreProposal(
+    const ideologyScores = scoreProposal(
       opts.topic,
       this.ideology,
       this.ocean.personalityModifier(),
       this.personality.cooperativeness,
     );
+
+    let scores = ideologyScores;
+    if (opts.scores) {
+      const j = opts.scores;
+      const w = 0.5;
+      const blend = (base: number, judge: number) => Math.min(100, base * (1 - w) + judge * w);
+      scores = {
+        political: { benefit: blend(ideologyScores.political.benefit, j.political), cost: ideologyScores.political.cost, net: 0 },
+        economic:  { benefit: blend(ideologyScores.economic.benefit,  j.economic),  cost: ideologyScores.economic.cost,  net: 0 },
+        social:    { benefit: blend(ideologyScores.social.benefit,    j.social),    cost: ideologyScores.social.cost,    net: 0 },
+      };
+      scores.political.net = scores.political.benefit - scores.political.cost;
+      scores.economic.net  = scores.economic.benefit  - scores.economic.cost;
+      scores.social.net    = scores.social.benefit    - scores.social.cost;
+    }
 
     scores.political.benefit *= this.personalityMultiplier;
     scores.economic.benefit *= this.personalityMultiplier;
