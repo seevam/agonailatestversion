@@ -42,7 +42,7 @@ export class OllamaClient {
         body: JSON.stringify(payload),
         signal: controller.signal,
       });
-      resp.ok || (() => { throw new Error(`Ollama error ${resp.status}`); })();
+      if (!resp.ok) throw new Error(`Ollama error ${resp.status}`);
       const data = await resp.json();
       return (data.response as string) ?? "";
     } finally {
