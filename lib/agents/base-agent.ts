@@ -247,6 +247,9 @@ export abstract class HistoricalAgent {
     const ctxMetrics = convCtx?.metrics as Record<string, unknown> | undefined;
     const empathyReservoir = (ctxMetrics?.empathy_reservoir as number) ?? 0;
     const escalationPrompt = debateContext.escalation_prompt as string | undefined;
+    const recentSpeakers = debateContext.recent_speakers as string[] | undefined;
+    const roundNumber = debateContext.round_number as number | undefined;
+    const totalRounds = debateContext.total_rounds as number | undefined;
 
     const lines: string[] = [];
     const myPrev: string[] = [];
@@ -289,6 +292,13 @@ export abstract class HistoricalAgent {
 
     if (this.redLines.length) {
       systemParts.push(`Non-negotiable limits: ${this.redLines.join("; ")}.`);
+    }
+
+    if (roundNumber !== undefined && totalRounds !== undefined) {
+      systemParts.push(`Round ${roundNumber} of ${totalRounds}.`);
+    }
+    if (recentSpeakers && recentSpeakers.length > 1) {
+      systemParts.push(`Recent speaking order (oldest → newest): ${recentSpeakers.join(" → ")}. You were chosen randomly to speak now — do not assume it is "your turn" in any fixed sequence.`);
     }
 
     // ---- Stakes and scoring context ----

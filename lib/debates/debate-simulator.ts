@@ -45,6 +45,7 @@ export class DebateSimulator {
   conversationState: ConversationState | null = null;
   private deadlockWarningIssued = false;
   private deadlockEscalationRoundsLeft = 0;
+  private speakerHistory: string[] = [];
 
   constructor(opts?: {
     maxRounds?: number;
@@ -67,6 +68,7 @@ export class DebateSimulator {
 
     const startTime = Date.now();
     this.debateHistory = [];
+    this.speakerHistory = [];
     this.deadlockWarningIssued = false;
     this.deadlockEscalationRoundsLeft = 0;
     const currentContext: Record<string, unknown> = { ...(initialContext ?? {}) };
@@ -89,7 +91,8 @@ export class DebateSimulator {
     }
 
     for (let roundNum = 0; roundNum < this.maxRounds; roundNum++) {
-      const currentSpeaker = agents[roundNum % agents.length];
+      const currentSpeaker = agents[Math.floor(Math.random() * agents.length)];
+      this.speakerHistory.push(currentSpeaker.name);
 
       if (this.conversationState) {
         currentContext.conversation_context =
@@ -105,6 +108,10 @@ export class DebateSimulator {
 
       currentContext.memory_summary = currentSpeaker.getMemorySummary();
       currentContext.shared_memory = this.getSharedMemorySummary();
+      currentContext.current_speaker = currentSpeaker.name;
+      currentContext.recent_speakers = this.speakerHistory.slice(-8);
+      currentContext.round_number = roundNum + 1;
+      currentContext.total_rounds = this.maxRounds;
 
       // Notify that this speaker is about to generate
       if (onThinking) await onThinking(currentSpeaker.name, roundNum + 1);
