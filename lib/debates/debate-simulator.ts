@@ -153,9 +153,12 @@ export class DebateSimulator {
         this.conversationState.updateMetrics();
       }
 
-      // Check consensus
+      // Check consensus — require a minimum number of rounds so that static
+      // ideology compatibility alone cannot fire consensus before the agents
+      // have actually exchanged meaningful arguments.
+      const minRoundsBeforeConsensus = Math.max(2, Math.ceil(this.maxRounds / 3));
       const consensusScore = this.calculateConsensusScore(agents);
-      if (consensusScore >= this.consensusThreshold) {
+      if (roundNum + 1 >= minRoundsBeforeConsensus && consensusScore >= this.consensusThreshold) {
         const duration = (Date.now() - startTime) / 60000;
         return await this.createResult(
           DebateStatus.CONSENSUS_REACHED,
@@ -206,7 +209,16 @@ export class DebateSimulator {
         pairCount++;
       }
     }
-    return pairCount > 0 ? totalScore / pairCount : 0;
+    const staticScore = pairCount > 0 ? totalScore / pairCount : 0;
+
+    // Blend static ideology/personality compatibility with the live conversation
+    // consensus metric so that two ideologically similar agents (e.g. both fascist)
+    // cannot reach "consensus_reached" before their actual conversation has converged.
+    if (this.conversationState) {
+      const dynamicScore = this.conversationState.metrics.consensusScore;
+      return staticScore * 0.5 + dynamicScore * 0.5;
+    }
+    return staticScore;
   }
 
   private wordOverlap(a: string, b: string): number {
