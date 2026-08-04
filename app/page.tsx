@@ -206,6 +206,90 @@ function DimBar({ label, dim }: { label: string; dim: { benefit: number; cost: n
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function JudgeVerdictCard({ verdict }: { verdict: any }) {
+  const winnerColor = verdict.winner ? getColor(verdict.winner) : "#64748b";
+  const ta = verdict.transcript_analysis;
+  const isLlmJudge = verdict.scoring_method === "llm_judge";
+
+  return (
+    <div className="jv-card">
+      {/* Winner + scoring method */}
+      <div className="jv-header">
+        <div className="jv-winner-block" style={{ borderLeftColor: winnerColor }}>
+          <span className="jv-winner-label">Debate Winner</span>
+          <span className="jv-winner-name" style={{ color: winnerColor }}>
+            {verdict.winner ?? "No clear winner"}
+          </span>
+          <span className="jv-margin">margin: {roundTwo(verdict.margin)}</span>
+        </div>
+        <div className="jv-meta-pills">
+          <span className={`jv-method-pill ${isLlmJudge ? "llm" : "heuristic"}`}>
+            {isLlmJudge ? "LLM Judge" : "Content Heuristic"}
+          </span>
+          {verdict.convergence_round ? (
+            <span className="jv-method-pill converged">
+              Converged Round {verdict.convergence_round}
+            </span>
+          ) : (
+            <span className="jv-method-pill no-converge">No convergence</span>
+          )}
+        </div>
+      </div>
+
+      {/* Transcript analysis */}
+      {ta && (
+        <div className="jv-section">
+          <div className="jv-section-title">Transcript Analysis</div>
+          <div className="jv-stats-row">
+            <div className="jv-stat-box">
+              <span className="jv-stat-label">Convergence Trend</span>
+              <div className="jv-bar-track">
+                <div
+                  className="jv-bar-fill"
+                  style={{ width: `${Math.round((ta.convergence_trend ?? 0) * 100)}%` }}
+                />
+              </div>
+              <span className="jv-stat-sub">{((ta.convergence_trend ?? 0) * 100).toFixed(0)}%</span>
+            </div>
+            <div className="jv-stat-box">
+              <span className="jv-stat-label">Concessions Made</span>
+              <span className="jv-stat-big">{ta.concessions_made ?? 0}</span>
+            </div>
+            <div className="jv-stat-box">
+              <span className="jv-stat-label">Most Empathetic</span>
+              <span className="jv-stat-big" style={{ color: getColor(ta.most_empathetic_agent ?? "") }}>
+                {ta.most_empathetic_agent ?? "—"}
+              </span>
+            </div>
+            <div className="jv-stat-box">
+              <span className="jv-stat-label">Convergence Metric</span>
+              <span className="jv-stat-big">{roundTwo(verdict.convergence_metric)}</span>
+            </div>
+          </div>
+          {ta.key_turning_point && ta.key_turning_point !== "None identified" && (
+            <div className="jv-turning-point">
+              <span className="jv-tp-label">Key turning point:</span> {ta.key_turning_point}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {verdict.recommendations?.length > 0 && (
+        <div className="jv-section">
+          <div className="jv-section-title">Recommendations</div>
+          <ul className="jv-recs">
+            {verdict.recommendations.map((r: string, i: number) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function ScoreCards({ scores }: { scores: Record<string, any> }) {
   return (
     <div className="scores-grid">
@@ -628,6 +712,14 @@ export default function Home() {
         <section className="panel">
           <h2>Policy Scores</h2>
           <ScoreCards scores={result.policyScores} />
+        </section>
+      )}
+
+      {/* Judge Verdict */}
+      {result?.judgeVerdict && !result.error && (
+        <section className="panel">
+          <h2>Judge Verdict</h2>
+          <JudgeVerdictCard verdict={result.judgeVerdict} />
         </section>
       )}
 
