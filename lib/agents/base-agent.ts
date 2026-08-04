@@ -250,6 +250,7 @@ export abstract class HistoricalAgent {
     const recentSpeakers = debateContext.recent_speakers as string[] | undefined;
     const roundNumber = debateContext.round_number as number | undefined;
     const totalRounds = debateContext.total_rounds as number | undefined;
+    const agentPoints = debateContext.agent_points as Record<string, string[]> | undefined;
 
     const lines: string[] = [];
     const myPrev: string[] = [];
@@ -277,11 +278,11 @@ export abstract class HistoricalAgent {
 
     let phase: string;
     if (roundNum === 0) {
-      phase = "This is your OPENING message. Introduce your stance on the topic.";
-    } else if (roundNum < 4) {
-      phase = "React to what they just said. Push back or agree, but add something new.";
+      phase = "This is your OPENING message. Introduce your stance on the topic clearly and boldly.";
+    } else if (roundNum < 7) {
+      phase = "Attack a specific claim your opponents made. Explain exactly why it is wrong, then assert your own position.";
     } else {
-      phase = "Look for common ground. Offer a specific compromise or concession.";
+      phase = "You have made your case. Now look for any narrow point of agreement while still defending your core position.";
     }
 
     const systemParts = [
@@ -312,6 +313,18 @@ export abstract class HistoricalAgent {
     systemParts.push("- If the debate deadlocks with no progress, everyone loses points. Engage genuinely — do not just repeat yourself.");
     systemParts.push("- Acknowledging an opponent's point or making a genuine concession earns you social score and credibility, even if you disagree overall.");
     // ---- End stakes ----
+
+    // --- Opponent claims to refute ---
+    if (agentPoints && Object.keys(agentPoints).length) {
+      systemParts.push("");
+      systemParts.push("WHAT YOUR OPPONENTS HAVE CLAIMED (choose at least one to directly refute):");
+      for (const [name, points] of Object.entries(agentPoints)) {
+        const latestClaim = points[points.length - 1];
+        systemParts.push(`  • ${name}: "${latestClaim}"`);
+      }
+      systemParts.push("You MUST pick one of the claims above. Identify the specific assertion, explain precisely why it is flawed, and state your counter-position. Do not just disagree in general — target the actual claim.");
+    }
+    // --- End opponent claims ---
 
     systemParts.push("");
     systemParts.push("Rules:");

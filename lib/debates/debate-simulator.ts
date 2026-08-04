@@ -46,6 +46,9 @@ export class DebateSimulator {
   private deadlockWarningIssued = false;
   private deadlockEscalationRoundsLeft = 0;
   private speakerHistory: string[] = [];
+  // Keeps the last 3 responses per agent so opponents can be given
+  // structured claims to refute each round.
+  private agentPoints: Map<string, string[]> = new Map();
 
   constructor(opts?: {
     maxRounds?: number;
@@ -69,6 +72,7 @@ export class DebateSimulator {
     const startTime = Date.now();
     this.debateHistory = [];
     this.speakerHistory = [];
+    this.agentPoints = new Map();
     this.deadlockWarningIssued = false;
     this.deadlockEscalationRoundsLeft = 0;
     const currentContext: Record<string, unknown> = { ...(initialContext ?? {}) };
@@ -113,6 +117,18 @@ export class DebateSimulator {
       currentContext.round_number = roundNum + 1;
       currentContext.total_rounds = this.maxRounds;
 
+      // Build a structured map of each opponent's most recent claims so the
+      // speaking agent can be explicitly asked to refute one of them.
+      const othersPoints: Record<string, string[]> = {};
+      for (const [name, pts] of this.agentPoints.entries()) {
+        if (name !== currentSpeaker.name && pts.length) {
+          othersPoints[name] = pts.slice(-2);
+        }
+      }
+      if (Object.keys(othersPoints).length) {
+        currentContext.agent_points = othersPoints;
+      }
+
       // Notify that this speaker is about to generate
       if (onThinking) await onThinking(currentSpeaker.name, roundNum + 1);
 
@@ -124,6 +140,12 @@ export class DebateSimulator {
       );
 
       currentSpeaker.updatePosition({ [topic]: response });
+
+      // Record this agent's response as a claim opponents can later refute.
+      const existing = this.agentPoints.get(currentSpeaker.name) ?? [];
+      existing.push(response);
+      if (existing.length > 3) existing.shift();
+      this.agentPoints.set(currentSpeaker.name, existing);
 
       // Bug 5: update individual agent empathy based on response content
       currentSpeaker.updateEmpathy(response, agents.filter((a) => a !== currentSpeaker));
