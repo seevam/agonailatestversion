@@ -466,11 +466,14 @@ export abstract class HistoricalAgent {
 
     const cs = this.scorecard.cumulativeScores;
     cs.political.benefit = Math.min(100, cs.political.benefit + scores.political.benefit / maxRounds);
-    cs.political.cost = Math.min(100, cs.political.cost + scores.political.cost / maxRounds);
-    cs.economic.benefit = Math.min(100, cs.economic.benefit + scores.economic.benefit / maxRounds);
-    cs.economic.cost = Math.min(100, cs.economic.cost + scores.economic.cost / maxRounds);
-    cs.social.benefit = Math.min(100, cs.social.benefit + scores.social.benefit / maxRounds);
-    cs.social.cost = Math.min(100, cs.social.cost + scores.social.cost / maxRounds);
+    cs.political.cost    = Math.min(100, cs.political.cost    + scores.political.cost    / maxRounds);
+    cs.political.net     = cs.political.benefit - cs.political.cost;
+    cs.economic.benefit  = Math.min(100, cs.economic.benefit  + scores.economic.benefit  / maxRounds);
+    cs.economic.cost     = Math.min(100, cs.economic.cost     + scores.economic.cost     / maxRounds);
+    cs.economic.net      = cs.economic.benefit  - cs.economic.cost;
+    cs.social.benefit    = Math.min(100, cs.social.benefit    + scores.social.benefit    / maxRounds);
+    cs.social.cost       = Math.min(100, cs.social.cost       + scores.social.cost       / maxRounds);
+    cs.social.net        = cs.social.benefit    - cs.social.cost;
 
     return adjusted;
   }
