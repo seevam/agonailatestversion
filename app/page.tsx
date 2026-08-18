@@ -236,6 +236,14 @@ function JudgeVerdictCard({ verdict }: { verdict: any }) {
         </div>
       </div>
 
+      {/* Ruling paragraph */}
+      {verdict.summary && (
+        <div className="jv-summary">
+          <div className="jv-summary-label">Tribunal Ruling</div>
+          <blockquote className="jv-ruling">{verdict.summary}</blockquote>
+        </div>
+      )}
+
       {/* Transcript analysis */}
       {ta && (
         <div className="jv-section">

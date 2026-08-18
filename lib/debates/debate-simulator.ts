@@ -94,8 +94,14 @@ export class DebateSimulator {
       this.conversationState.updateMetrics();
     }
 
+    let lastSpeakerName = "";
     for (let roundNum = 0; roundNum < this.maxRounds; roundNum++) {
-      const currentSpeaker = agents[Math.floor(Math.random() * agents.length)];
+      // Exclude the last speaker from the pool to prevent back-to-back turns.
+      const eligible = agents.length > 1
+        ? agents.filter((a) => a.name !== lastSpeakerName)
+        : agents;
+      const currentSpeaker = eligible[Math.floor(Math.random() * eligible.length)];
+      lastSpeakerName = currentSpeaker.name;
       this.speakerHistory.push(currentSpeaker.name);
 
       if (this.conversationState) {

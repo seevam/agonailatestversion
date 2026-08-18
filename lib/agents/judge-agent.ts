@@ -25,6 +25,7 @@ export interface JudgeRoundScore {
 export interface JudgeVerdict {
   winner: string | null;
   margin: number;
+  summary: string;
   scorecards: Record<string, Record<string, unknown>>;
   empathy_analysis: Record<string, Record<string, unknown>>;
   convergence_round: number | null;
@@ -98,6 +99,55 @@ export class JudgeAgent {
         }
       }),
     );
+  }
+
+  private async generateSummary(
+    agents: HistoricalAgent[],
+    winner: string | null,
+    margin: number,
+    topic: string,
+    transcript: string,
+  ): Promise<string> {
+    if (!this.llmClient) return "";
+
+    const agentList = agents.map((a) => a.name).join(", ");
+    const winnerLine = winner
+      ? `The tribunal finds that ${winner} presented the stronger case (objective margin: ${margin.toFixed(2)}).`
+      : "The tribunal finds no clear winner — the positions remained fundamentally incompatible throughout.";
+
+    const system = [
+      "You are the presiding judge of a United Nations Security Council debate tribunal.",
+      "Write a single ruling paragraph of 3 to 5 sentences.",
+      "Tone: formal, measured, authoritative — like an official UN Security Council resolution statement.",
+      "Address the real-world implications of the positions taken: what would it mean for the nations or populations each participant represents if their position were adopted in practice?",
+      "Reference the specific arguments made in the transcript, not generic observations.",
+      "Do NOT use bullet points. Write continuous prose only.",
+      "Do NOT start with 'The tribunal' — vary the opening.",
+    ].join("\n");
+
+    const prompt = [
+      `Debate topic: "${topic}"`,
+      `Participants: ${agentList}`,
+      winnerLine,
+      "",
+      "DEBATE TRANSCRIPT:",
+      transcript.slice(0, 4000),
+      "",
+      "Deliver your ruling paragraph now:",
+    ].join("\n");
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const raw = await this.llmClient.generate(prompt, system, {
+          temperature: attempt === 0 ? 0.55 : 0.35,
+          max_tokens: 350,
+        });
+        if (raw?.trim()) return raw.trim();
+      } catch {
+        // retry once
+      }
+    }
+    return "";
   }
 
   private async analyzeTranscript(
@@ -230,13 +280,15 @@ export class JudgeAgent {
 
     const recommendations = this.generateRecommendations(agents, convergenceRound, topic);
 
-    const transcriptAnalysis = transcript
-      ? await this.analyzeTranscript(transcript, agents.map((a) => a.name))
-      : undefined;
+    const [transcriptAnalysis, summary] = await Promise.all([
+      transcript ? this.analyzeTranscript(transcript, agents.map((a) => a.name)) : Promise.resolve(undefined),
+      this.generateSummary(agents, winner, margin, topic || "the debate topic", transcript || ""),
+    ]);
 
     return {
       winner,
       margin:             Math.round(margin * 100) / 100,
+      summary,
       scorecards,
       empathy_analysis:   empathyAnalysis,
       convergence_round:  convergenceRound,

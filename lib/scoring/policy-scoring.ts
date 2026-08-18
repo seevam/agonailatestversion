@@ -194,7 +194,11 @@ export function applyEmpathyMultiplier(
   empathyRatio: number,
 ): number {
   if (empathyRatio <= 0) return ownObjective;
-  return ownObjective * (1 - empathyRatio) + opponentObjective * empathyRatio;
+  // Cap blend at 30% so high-empathy agents never lose most of their own score.
+  // Without this, two agents near empathyRatio=1.0 essentially swap objectives,
+  // producing deeply negative empathy_bonus values.
+  const blendFactor = empathyRatio * 0.3;
+  return ownObjective * (1 - blendFactor) + opponentObjective * blendFactor;
 }
 
 export function applyFatiguePenalty(
